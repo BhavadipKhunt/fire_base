@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="lagoblue">#18B8C9</color>
+    <color name="primary">#536DFE</color>
+    <color name="primary_dark">#445DE4</color>
+    <color name="accent">#F44336</color>
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
+    <color name="divider">#BDBDBD</color>
+    <color name="lagoblue1">#027876</color>
+    <color name="colorPrimary">#1F5BF3</color>
+    <color name="colorPrimaryDark">#0947E8</color>
+    <color name="colorAccent">#00A5FF</color>
+    <!-- colors for modern ui -->
+    <color name="whiteTextColor">#fff</color>
+    <color name="primaryTextColor">#00a5ff</color>
+    <color name="loginBkColor">#f0f0f0</color>
+    <!-- colros for card -->
+    <color name="whiteCardColor">#fff</color>
+    <color name="trans">#00000000 </color>
+</resources>
