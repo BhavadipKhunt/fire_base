@@ -26,15 +26,24 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.google.android.gms.tasks.Continuation;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 import com.theartofdev.edmodo.cropper.CropImage;
 import com.theartofdev.edmodo.cropper.CropImageView;
 
 import java.io.ByteArrayOutputStream;
 import java.util.Base64;
+import java.util.Random;
 
 public class product_view_activity extends AppCompatActivity {
 int i;
@@ -47,9 +56,12 @@ int i;
     ImageView himageView,productimageview;
     FirebaseDatabase database;
     DatabaseReference myRef;
+    FirebaseStorage storage;
 
 String name,email;
     private FirebaseAuth mAuth;
+    private StorageReference storageRef;
+    private StorageReference storageReference;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,7 +98,8 @@ String name,email;
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
                 if (item.getItemId()==R.id.home)
                 {
-
+                    Intent intent=new Intent(product_view_activity.this,home_activity.class);
+                    startActivity(intent);
                     drawerLayout.closeDrawer(Gravity.LEFT);
                 }
                 if (item.getItemId()==R.id.userproduct)
@@ -104,6 +117,19 @@ String name,email;
                     productname=dialog.findViewById(R.id.product_name);
                     productprice=dialog.findViewById(R.id.product_price);
                     addbutton=dialog.findViewById(R.id.add_button);
+
+                    storage = FirebaseStorage.getInstance();
+                   // storageRef = storage.getReference();
+                    storageReference = FirebaseStorage.getInstance().getReference();
+                    String imageName = "Img" + new Random().nextInt(10000) + ".jpg";
+                   // StorageReference imgRef = storageReference.child("Images/"+imageName);
+                    StorageReference mainBucket = storageReference.child("mainBucket/"+imageName);
+
+                    // While the file names are the same, the references point to different files
+                    mainBucket.getName().equals(mainBucket.getName());    // true
+                    mainBucket.getPath().equals(mainBucket.getPath());    // false
+
+
 
                     productimageview.setOnClickListener(new View.OnClickListener() {
                         @Override
@@ -132,18 +158,68 @@ String name,email;
                                 name = productname.getText().toString();
                                 price = productprice.getText().toString();
                                 dec = productdec.getText().toString();
-                                Bitmap bitmap= ((BitmapDrawable)productimageview.getDrawable()).getBitmap();
-                                ByteArrayOutputStream bos=new ByteArrayOutputStream();
-                                bitmap.compress(Bitmap.CompressFormat.JPEG,30,bos);
-                                byte[] byteArray = bos.toByteArray();
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                     image = Base64.getEncoder().encodeToString(byteArray);
-                                }
-                                database = FirebaseDatabase.getInstance();
-                                myRef = database.getReference("ProductData").push();
-                                String id = myRef.getKey();
-                                product_data product_data=new product_data(id,name,price,dec);
-                                myRef.setValue(product_data);
+
+                                // Get the data from an ImageView as bytes
+                                productimageview.setDrawingCacheEnabled(true);
+                                productimageview.buildDrawingCache();
+                                Bitmap bitmap = ((BitmapDrawable) productimageview.getDrawable()).getBitmap();
+                                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
+                                byte[] data = baos.toByteArray();
+
+                                UploadTask uploadTask = mainBucket.putBytes(data);
+                                uploadTask.addOnFailureListener(new OnFailureListener() {
+                                    @Override
+                                    public void onFailure(@NonNull Exception exception) {
+                                        // Handle unsuccessful uploads
+                                    }
+                                }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                                    @Override
+                                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot)
+                                    {
+
+                                        Task<Uri> urlTask = uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
+                                            @Override
+                                            public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
+                                                if (!task.isSuccessful()) {
+                                                    throw task.getException();
+                                                }
+
+                                                // Continue with the task to get the download URL
+                                                return mainBucket.getDownloadUrl();
+                                            }
+                                        }).addOnCompleteListener(new OnCompleteListener<Uri>() {
+                                            @Override
+                                            public void onComplete(@NonNull Task<Uri> task) {
+                                                if (task.isSuccessful()) {
+                                                    Uri downloadUri = task.getResult();
+                                                    String imgUrl= String.valueOf(downloadUri);
+                                                    database = FirebaseDatabase.getInstance();
+                                                    myRef = database.getReference("ProductData").push();
+                                                    String id = myRef.getKey();
+                                                    product_data product_data=new product_data(id,name,price,dec,imgUrl);
+                                                    myRef.setValue(product_data);
+
+                                                } else {
+                                                    // Handle failures
+                                                    // ...
+                                                }
+                                            }
+                                        });
+
+
+                                    }
+                                });
+
+
+//                                Bitmap bitmap= ((BitmapDrawable)productimageview.getDrawable()).getBitmap();
+//                                ByteArrayOutputStream bos=new ByteArrayOutputStream();
+//                                bitmap.compress(Bitmap.CompressFormat.JPEG,30,bos);
+//                                byte[] byteArray = bos.toByteArray();
+//                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//                                     image = Base64.getEncoder().encodeToString(byteArray);
+//                                }
+
                                 dialog.dismiss();
                             }
                         }
